@@ -3,7 +3,9 @@ import { UserContext } from '@/app/_context/UserContext';
 import { Button } from '@/components/ui/button';
 import { api } from '@/convex/_generated/api';
 import { coachingOptions } from '@/services/Options';
-import { useConvex } from 'convex/react'
+import { useConvex, useMutation } from 'convex/react'
+import { Trash } from 'lucide-react';
+import { toast } from 'sonner';
 import Link from 'next/link';
 import moment from 'moment/moment';
 import  Image  from 'next/image';
@@ -18,6 +20,17 @@ function Feedback() {
     });
     console.log(result);
     setDiscussionRoomList(result)
+  }
+
+  const DeleteDiscussionRoom = useMutation(api.DiscussionRoom.DeleteDiscussionRoom);
+
+  const deleteFeedback = async (e, id)=>{
+      e.stopPropagation();
+      await DeleteDiscussionRoom({
+          id: id
+      })
+      toast('Deleted successfully');
+      GetDiscussionRooms();
   }
 
   const GetAbstractImages = (option)=>{
@@ -45,11 +58,18 @@ function Feedback() {
                       <h2 className='text-gray-400 text-sm'>{moment(item._creationTime).fromNow()}</h2>
                   </div>
             </div>
-            <Link href={"/view-summary/" + item._id}>
-            <Button variant='outline' className='invisible group-hover:visible'>View Feedback</Button>
-            </Link>
-            
-      </div>
+            <div className='flex gap-2 items-center'>
+              <Link href={"/view-summary/" + item._id}>
+              <Button variant='outline' className='invisible group-hover:visible'>View Feedback</Button>
+              </Link>
+              <Button variant='ghost' size='icon' className='text-red-500 hover:text-red-600 hover:bg-red-50 invisible group-hover:visible'
+                  onClick={(e)=>deleteFeedback(e, item._id)}
+                  >
+                      <Trash className='w-4 h-4'/>
+                  </Button>
+            </div>
+            </div>
+      
     )
   )}
 </div>

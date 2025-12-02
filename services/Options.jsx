@@ -43,7 +43,7 @@ export const CoachingExpert = [
         avatar:"/t1.png"
     },
     {
-        name: "Sallie",
+        name: "Salli",
         avatar:"/t2.avif"
     },
     {

@@ -8,17 +8,16 @@ import { CoachingExpert } from "@/services/Options";
 import { UserButton } from "@stackframe/stack";
 import { useMutation, useQuery } from "convex/react";
 import Image from "next/image";
+import Link from "next/link";
 import { useParams } from "next/navigation";
 import React, { useContext, useEffect, useRef, useState } from "react";
 import { AIModel, ConvertTextToSpeech, getToken } from "@/services/GlobalServices";
-import { RealtimeTranscriber } from "assemblyai";
-import {  Loader2Icon } from "lucide-react";
+import {  Loader2Icon, ArrowLeft } from "lucide-react";
 import ChatBox from "./_components/ChatBox";
 import { toast } from "sonner";
 import { UserContext } from "@/app/_context/UserContext";
 
-const RecordRTC = nextDynamic(() => import("recordrtc"), { ssr: false });   
-let texts = {}
+
 
 function DiscussionRoom() {
   const { roomid } = useParams();
@@ -54,82 +53,122 @@ function DiscussionRoom() {
   }, [DiscussionRoomData]);
 
   const connectToServer = async () => {
+    console.log("Starting connection...");
     setEnableMic(true);
     setLoading(true);
-    realtimeTranscriber.current = new RealtimeTranscriber({
-      token: await getToken(),
-      sample_rate: 16000,
-    });
 
-    realtimeTranscriber.current.on("transcript", async (transcript) => {
-      
-      let msg = ''
+    try {
+      console.log("Fetching token...");
+      const token = await getToken();
+      console.log("Token fetched:", token ? `Yes (Length: ${token.length})` : "No");
 
-      if(transcript.message_type==="FinalTranscript"){
-        setConversation((prev)=>[...prev,{
-          role:"user",
-          content:transcript.text
-        }]);
-        await updateUserTokenMethod(transcript.text);
-      }
-      
-      texts[transcript.audio_start] = transcript?.text;
-      const keys = Object.keys(texts)
-      keys.sort((a,b)=>Number(a)-Number(b)) ;
+      const wsUrl = `wss://streaming.assemblyai.com/v3/ws?token=${token}&sample_rate=16000`;
+      const ws = new WebSocket(wsUrl);
+      realtimeTranscriber.current = ws;
 
-      for (const key of keys){
-        if(texts[key]){
-          msg+=` ${texts[key]}`
-        }
-      }
-      setTranscribe(msg);
-    });
+      ws.onopen = async () => {
+        console.log("WebSocket connected.");
+        setLoading(false);
+        toast("Connected");
 
-    await realtimeTranscriber.current.connect();
-    setLoading(false);
-    
-    toast("Connected")
+        try {
+          const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+          const audioContext = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: 16000 });
+          const source = audioContext.createMediaStreamSource(stream);
+          const processor = audioContext.createScriptProcessor(4096, 1, 1);
 
-    if (typeof window !== "undefined" && typeof navigator !== "undefined") {
-      navigator.mediaDevices
-        .getUserMedia({ audio: true })
-        .then(async (stream) => {
-          recorder.current = new RecordRTC(stream, {
-            type: "audio",
-            mimeType: "audio/webm; codecs=pcm",
-            recorderType: RecordRTC.StereoAudioRecorder,
-            desiredSampRate: 16000,
-            numberOfAudioChannels: 1,
-            timeSlice: 250,
-            bufferSize: 4096,
-            audioBitsPerSecond: 128000,
-            ondataavailable: async (blob) => {
-              if (!realtimeTranscriber.current) return;
+          source.connect(processor);
+          processor.connect(audioContext.destination);
 
-              clearTimeout(silenceTimeout.current);
+          processor.onaudioprocess = (e) => {
+            const inputData = e.inputBuffer.getChannelData(0);
+            const buffer = new Int16Array(inputData.length);
+            for (let i = 0; i < inputData.length; i++) {
+              buffer[i] = Math.max(-1, Math.min(1, inputData[i])) * 0x7FFF;
+            }
+            
+            if (ws.readyState === WebSocket.OPEN) {
+              // console.log("Sending audio chunk:", buffer.byteLength); // Uncomment for verbose logs
+              ws.send(buffer.buffer); // Send the underlying ArrayBuffer
+            }
+          };
 
-              const buffer = await blob.arrayBuffer();
-              await realtimeTranscriber.current.sendAudioData(buffer);
-
-              silenceTimeout.current = setTimeout(() => {
-                console.log("User stopped talking");
-              }, 2000);
+          recorder.current = {
+            stopRecording: () => {
+              processor.disconnect();
+              source.disconnect();
+              audioContext.close();
+              stream.getTracks().forEach((track) => track.stop());
             },
-          });
+          };
+        } catch (err) {
+          console.error("Audio setup failed:", err);
+          toast.error("Failed to access microphone");
+          disconnect();
+        }
+      };
 
-          recorder.current.startRecording();
-        })
-        .catch(console.error);
+      ws.onmessage = async (event) => {
+        // console.log("WebSocket message received:", event.data); // Commented out verbose log
+        const message = JSON.parse(event.data);
+
+        if (message.type === "Turn") {
+          // Handle Final Transcript
+          if (message.end_of_turn) {
+            const finalText = message.transcript;
+            if (finalText) {
+              setConversation((prev) => [
+                ...prev,
+                {
+                  role: "user",
+                  content: finalText,
+                },
+              ]);
+              await updateUserTokenMethod(finalText);
+              setTranscribe(""); 
+            }
+          } 
+          // Handle Partial Transcript
+          else {
+            // Use utterance for partials as it seems to contain the full provisional text
+            const partialText = message.utterance || message.transcript;
+            if (partialText) {
+              setTranscribe(partialText);
+            }
+          }
+        } else if (message.type === "Begin") {
+          console.log("Session started:", message.id);
+        }
+      };
+
+      ws.onerror = (event) => {
+        console.error("WebSocket error:", event);
+        toast.error("Connection error");
+        disconnect();
+      };
+
+      ws.onclose = (event) => {
+        console.log("WebSocket closed:", event.code, event.reason);
+        setEnableMic(false);
+      };
+
+    } catch (error) {
+      console.error("Error connecting:", error);
+      setLoading(false);
+      setEnableMic(false);
+      toast.error("Failed to connect");
     }
   };
 
   useEffect(()=>{
     
     async function fetchData(){
+      if(!DiscussionRoomData) return;
+      
       if(conversation[conversation.length -1].role==="user"){
         // Calling AI model to get response
         const lastTwoResp = conversation.slice(-2)
-        const aiResp =  AIModel(DiscussionRoomData.topic, DiscussionRoomData.coachingOption,lastTwoResp); 
+        const aiResp = await AIModel(DiscussionRoomData.topic, DiscussionRoomData.coachingOption,lastTwoResp); 
         
         const url = await ConvertTextToSpeech(aiResp.content,DiscussionRoomData.expertName);
         console.log(url)
@@ -146,46 +185,61 @@ function DiscussionRoom() {
   },[conversation])
 
   const disconnect = async (e) => {
-    e.preventDefault();
-    setLoading(true)
+    if (e) e.preventDefault();
+    setLoading(true);
     if (realtimeTranscriber.current) {
-      await realtimeTranscriber.current.close();
+      // Send terminate message if open
+      if (realtimeTranscriber.current.readyState === WebSocket.OPEN) {
+        realtimeTranscriber.current.send(JSON.stringify({ terminate_session: true }));
+        realtimeTranscriber.current.close();
+      }
+      realtimeTranscriber.current = null;
     }
 
     if (recorder.current) {
-      recorder.current.pauseRecording();
+      recorder.current.stopRecording();
       recorder.current = null;
     }
 
     setEnableMic(false);
-    toast("Disconnected")
+    toast("Disconnected");
 
     await UpdateConversation({
       id: DiscussionRoomData._id,
       conversation: conversation,
-    })
+    });
     setLoading(false);
     setEnableSummary(true);
-
   };
 
   const updateUserTokenMethod = async (text)=>{
-    const tokenCount = text.trim()?text.trim().split(/\s+/).length:0;
+    try {
+      const tokenCount = text.trim()?text.trim().split(/\s+/).length:0;
       const result = await updateUserToken({
         id:userData._id,
         credits: Number(userData.credits) - Number(tokenCount)
       })
 
-      setUserData(prev=>({
-        ...prev,
-        credits: result.credits
-      }));
+      if (result) {
+        setUserData(prev=>({
+          ...prev,
+          credits: result.credits
+        }));
+      }
+    } catch (error) {
+      console.error("Failed to update user token:", error);
+    }
   }
   if (!DiscussionRoomData) return <div>Loading...</div>;
 
   return (
     <div className="-mt-12">
-      <h2 className="text-lg font-bold">{DiscussionRoomData.coachingOption}</h2>
+      <div className="flex justify-between items-center mb-4">
+        <h2 className="text-lg font-bold">{DiscussionRoomData.coachingOption}</h2>
+        <Link href="/dashboard">
+          <Button variant="outline" size="icon"><ArrowLeft/></Button>
+        </Link>
+      </div>
 
       <div className="mt-5 grid grid-cols-1 lg:grid-cols-3 gap-10">
         {/* Left section */}

@@ -20,18 +20,21 @@
 
 import { UserButton } from "@stackframe/stack";
 import Image from "next/image";
+import Link from "next/link";
 import React from "react";
-import ThemeToggle from "./ThemeToggle";
+import { ThemeToggle } from "../../components/ThemeToggle";
 
 function AppHeader() {
   return (
     <div className="p-3 shadow-sm flex justify-between items-center bg-white dark:bg-black">
-      <Image
-        src="/logo.svg"
-        alt="logo"
-        width={180}
-        height={200}
-      />
+      <Link href="/">
+        <Image
+          src="/logo.svg"
+          alt="logo"
+          width={180}
+          height={200}
+        />
+      </Link>
 
       <div className="flex items-center gap-4">
         <ThemeToggle />

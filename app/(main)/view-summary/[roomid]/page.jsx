@@ -7,6 +7,9 @@ import moment from 'moment';
 import Image from 'next/image';
 import { useParams } from 'next/navigation'
 import React from 'react'
+import Link from 'next/link';
+import { Button } from '@/components/ui/button';
+import { ArrowLeft } from 'lucide-react';
 
 import SummaryBox from './_components/SummaryBox';
 import ChatBox from '../../discussion-room/[roomid]/_components/ChatBox';
@@ -29,6 +32,11 @@ function ViewSummary() {
 
   return (
     <div className='-mt-10'>
+      <div className="mb-5">
+        <Link href="/dashboard">
+          <Button variant="outline" size="icon"><ArrowLeft/></Button>
+        </Link>
+      </div>
     <div className='flex justify-between items-end'>
       <div className='flex gap-7 items-center'>
         <Image 

@@ -1,5 +1,6 @@
 "use client"
 import { ConvexProvider, ConvexReactClient } from "convex/react";
+import { ThemeProvider } from "next-themes";
 import React, { Suspense } from 'react'
 import AuthProvider from "./AuthProvider";
 
@@ -8,10 +9,16 @@ function Provider({children}) {
   return (
     <Suspense fallback={<p>Loading...</p>}>
         <ConvexProvider client={convex}>
-          <AuthProvider>
-            {children}
-          </AuthProvider>
-          
+          <ThemeProvider
+            attribute="class"
+            defaultTheme="system"
+            enableSystem
+            disableTransitionOnChange
+          >
+            <AuthProvider>
+              {children}
+            </AuthProvider>
+          </ThemeProvider>
         </ConvexProvider>
      </Suspense>
   )

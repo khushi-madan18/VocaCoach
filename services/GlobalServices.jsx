@@ -1,12 +1,11 @@
 import axios from "axios";
-import OpenAI from "openai";
+import { GoogleGenerativeAI } from "@google/generative-ai";
 import { coachingOptions } from "./Options";
 import { PollyClient, SynthesizeSpeechCommand } from "@aws-sdk/client-polly";
 
 export const getToken = async () => {
   try {
     const response = await axios.get("/api/getToken");
-    console.log(response);
     return response.data.token;
   } catch (error) {
     console.error("Error fetching token:", error.response?.data || error.message);
@@ -14,11 +13,7 @@ export const getToken = async () => {
   }
 };
 
-const openai = new OpenAI({
-  baseURL: "https://openrouter.ai/api/v1",
-  apiKey: process.env.NEXT_PUBLIC_AI_OPENROUTER,
-  dangerouslyAllowBrowser: true
-});
+const genAI = new GoogleGenerativeAI(process.env.NEXT_PUBLIC_GEMINI_API_KEY);
 
 export const AIModel = async (topic, coachingOption, lastTwoResp) => {
   try {
@@ -31,23 +26,49 @@ export const AIModel = async (topic, coachingOption, lastTwoResp) => {
 
     const PROMPT = (option.prompt).replace("{user_topic}", topic);
     
-    const completion = await openai.chat.completions.create({
-      model: "google/gemini-2.0-flash-exp:free",
-      messages: [
-        { role: 'assistant', content: PROMPT },
-        ...lastTwoResp
-      ],
-    });
+    try {
+      const model = genAI.getGenerativeModel({ 
+        model: "gemini-2.0-flash",
+        systemInstruction: PROMPT
+      });
 
-    console.log("AI Response:", completion.choices[0].message);
-    return completion.choices[0].message;
+      let chatHistory = lastTwoResp.slice(0, -1).map(msg => ({
+        role: msg.role === 'assistant' ? 'model' : 'user',
+        parts: [{ text: msg.content }]
+      }));
+
+      // Gemini history must start with a user message
+      if (chatHistory.length > 0 && chatHistory[0].role === 'model') {
+        chatHistory = chatHistory.slice(1);
+      }
+
+      const chat = model.startChat({
+        history: chatHistory
+      });
+
+      const lastMsg = lastTwoResp[lastTwoResp.length - 1];
+      const result = await chat.sendMessage(lastMsg.content);
+      const response = await result.response;
+      const text = response.text();
+
+      console.log("AI Response:", text);
+      return { role: 'assistant', content: text };
+
+    } catch (error) {
+      console.error("AI Model Error:", error);
+      // Check for safety block or other generation errors
+      if (error.message?.includes("SAFETY") || error.message?.includes("blocked")) {
+         return { role: 'assistant', content: "Could you rephrase that? I want to make sure I understand correctly." };
+      }
+      throw error;
+    }
 
   } catch (error) {
     console.error("AI Model Error:", error);
     // Return a safe fallback message instead of crashing
     return {
         role: "assistant", 
-        content: "I am having trouble connecting to the AI service (Rate Limit Exceeded). Please try again later."
+        content: "I am having trouble connecting to the AI service. Please try again later."
     };
   }
 };
@@ -62,24 +83,24 @@ export const AIModelForSummary = async (topic, coachingOption, conversation) => 
 
     const PROMPT = (option.summaryprompt).replace("{user_topic}", topic);
     
-    const completion = await openai.chat.completions.create({
-      model: "google/gemini-2.0-flash-exp:free",
-      messages: [
-        
-        ...conversation,
-        { role: 'assistant', content: PROMPT },
-      ],
-    });
+    const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
+    
+    const conversationText = conversation.map(m => `${m.role}: ${m.content}`).join('\n');
+    const finalPrompt = `${PROMPT}\n\nConversation:\n${conversationText}\n\nPlease provide the summary now.`;
 
-    console.log("AI Response:", completion.choices[0].message);
-    return completion.choices[0].message;
+    const result = await model.generateContent(finalPrompt);
+    const response = await result.response;
+    const text = response.text();
+
+    console.log("AI Response:", text);
+    return { role: 'assistant', content: text };
 
   } catch (error) {
     console.error("AI Model Error:", error);
    
     return {
         role: "assistant", 
-        content: "I am having trouble connecting to the AI service (Rate Limit Exceeded). Please try again later."
+        content: "I am having trouble connecting to the AI service. Please try again later."
     };
   }
 };
@@ -87,7 +108,7 @@ export const AIModelForSummary = async (topic, coachingOption, conversation) => 
 
 export const ConvertTextToSpeech = async (text,expertName)=>{
     const pollyClient = new PollyClient({
-      regin: 'us-east-1',
+      region: 'us-east-1',
       credentials: {
         accessKeyId:process.env.NEXT_PUBLIC_AWS_ACCESS_KEY,
         secretAccessKey:process.env.NEXT_PUBLIC_AWS_SECRET_KEY

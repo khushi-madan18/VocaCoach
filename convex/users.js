@@ -32,38 +32,40 @@ import { mutation } from "./_generated/server";
 
 
 export const CreateUser = mutation({
-    args: {
-      name: v.string(),
-      email: v.string()
-    },
-    handler: async (ctx, args) => {
-      const existing = await ctx.db
-        .query("users")
-        .filter(q => q.eq(q.field("email"), args.email))
-        .collect();
-  
-      if (existing.length > 0) {
-        return existing[0];
-      }
-  
-      const result = await ctx.db.insert("users", {
-        name: args.name,
-        email: args.email,
-        credits: 50000
-      });
-  
-      return await ctx.db.get(result);
-    }
-  });
-  
+  args: {
+    name: v.string(),
+    email: v.string()
+  },
+  handler: async (ctx, args) => {
+    const existing = await ctx.db
+      .query("users")
+      .filter(q => q.eq(q.field("email"), args.email))
+      .collect();
 
+    if (existing.length > 0) {
+      return existing[0];
+    }
+
+    const result = await ctx.db.insert("users", {
+      name: args.name,
+      email: args.email,
+      credits: 50000
+    });
+
+    return await ctx.db.get(result);
+  }
+});
+
+
+// Update user token credits
 export const UpdateUserToken = mutation({
-  args:{
+  args: {
     id: v.id('users'),
     credits: v.number()
   },
-  handler: async(ctx, args)=>{
-    const updatedUser = await ctx.db.patch(args.id,{ 
+  handler: async (ctx, args) => {
+    console.log("Updating user token:", args.id, args.credits);
+    const updatedUser = await ctx.db.patch(args.id, {
       credits: args.credits
     });
     return updatedUser;

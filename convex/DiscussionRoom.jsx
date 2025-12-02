@@ -69,3 +69,11 @@ export const GetAllDiscussionRoom = query({
     }
 })
 
+export const DeleteDiscussionRoom = mutation({
+    args: {
+        id: v.id('DiscussionRoom')
+    },
+    handler: async (ctx, args) => {
+        await ctx.db.delete(args.id);
+    }
+})
