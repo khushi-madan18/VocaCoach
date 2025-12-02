@@ -12,7 +12,28 @@ import {
   AccordionTrigger,
 } from "@/components/ui/accordion";
 
+import { useUser } from "@stackframe/stack";
+import { useRouter } from "next/navigation";
+import { toast } from "sonner";
+import { ThemeToggle } from "./components/ThemeToggle";
+
 export default function Home() {
+  const user = useUser();
+  const router = useRouter();
+
+  const handleDashboardClick = () => {
+    if (!user) {
+      toast("You are not signed in", {
+        description: "Please sign in to access the dashboard.",
+        action: {
+          label: "Sign In",
+          onClick: () => router.push("/handler/sign-in"), // Assuming stackframe sign-in route or just let them find the button
+        },
+      });
+      return;
+    }
+    router.push("/dashboard");
+  };
 
   return (
     <div className="min-h-screen bg-background text-foreground transition-colors duration-300">
@@ -60,11 +81,9 @@ export default function Home() {
             transition={{ duration: 0.5, delay: 0.3 }}
             className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-4"
           >
-            <Link href="/dashboard">
-              <Button size="lg" className="h-12 px-8 text-lg rounded-full">
-                Start Practicing <ArrowRight className="ml-2 h-4 w-4" />
-              </Button>
-            </Link>
+            <Button size="lg" className="h-12 px-8 text-lg rounded-full" onClick={handleDashboardClick}>
+              Start Practicing <ArrowRight className="ml-2 h-4 w-4" />
+            </Button>
             <Link href="#features">
               <Button variant="outline" size="lg" className="h-12 px-8 text-lg rounded-full">
                 Learn More
