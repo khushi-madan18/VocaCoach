@@ -1,7 +1,7 @@
 import React from 'react'
-import FeatureAssistants from './dashboardComponents/FeatureAssistants'
-import History from './dashboardComponents/History'
-import Feedback from './dashboardComponents/Feedback'
+import FeatureAssistants from './_components/FeatureAssistants'
+import History from './_components/History'
+import Feedback from './_components/Feedback'
 
 
 function Dashboard() {
