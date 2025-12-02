@@ -166,7 +166,7 @@ export default function Home() {
             />
             <FaqItem
               question="What languages are supported?"
-              answer="Currently, we support English, Spanish, French, and German, with more languages coming soon."
+              answer="Currently, we support English - more languages coming soon."
             />
           </div>
         </div>
@@ -204,7 +204,7 @@ export default function Home() {
           </div>
         </div>
         <div className="max-w-7xl mx-auto px-6 pt-8 border-t text-center text-sm text-muted-foreground">
-          <p>© 2024 VocaCoach. All rights reserved.</p>
+          <p>© 2025 VocaCoach. All rights reserved.</p>
         </div>
       </footer>
     </div>
