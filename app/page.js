@@ -27,7 +27,7 @@ export default function Home() {
         description: "Please sign in to access the dashboard.",
         action: {
           label: "Sign In",
-          onClick: () => router.push("/handler/sign-in"), // Assuming stackframe sign-in route or just let them find the button
+          onClick: () => router.push("/handler/sign-in"), 
         },
       });
       return;
@@ -37,10 +37,10 @@ export default function Home() {
 
   return (
     <div className="min-h-screen bg-background text-foreground transition-colors duration-300">
-      {/* Restored AppHeader */}
+      
       <AppHeader />
 
-      {/* Hero Section */}
+      
       <section className="pt-32 pb-20 px-6">
         <div className="max-w-4xl mx-auto text-center space-y-8">
           <motion.div
@@ -93,7 +93,7 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Features Grid */}
+
       <section id="features" className="py-24 bg-muted/30">
         <div className="max-w-7xl mx-auto px-6">
           <motion.div
@@ -142,7 +142,7 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Testimonials Section */}
+
       <section className="py-24 px-6">
         <div className="max-w-7xl mx-auto">
           <h2 className="text-3xl font-bold text-center mb-16">Loved by Communicators</h2>
@@ -166,7 +166,7 @@ export default function Home() {
         </div>
       </section>
 
-      {/* FAQ Section */}
+
       <section className="py-24 bg-muted/30 px-6">
         <div className="max-w-3xl mx-auto">
           <h2 className="text-3xl font-bold text-center mb-12">Frequently Asked Questions</h2>
@@ -191,7 +191,7 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Footer */}
+
       <footer className="py-12 border-t bg-background">
         <div className="max-w-7xl mx-auto px-6 grid md:grid-cols-4 gap-8 mb-8">
           <div className="col-span-1 md:col-span-2">
