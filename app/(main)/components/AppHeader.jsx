@@ -33,6 +33,7 @@ function AppHeader() {
           alt="logo"
           width={180}
           height={200}
+          className="dark:invert dark:hue-rotate-180"
         />
       </Link>
 
