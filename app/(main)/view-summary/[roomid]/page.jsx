@@ -2,6 +2,7 @@
 import { api } from '@/convex/_generated/api';
 import { coachingOptions } from '@/services/Options';
 import { useQuery } from 'convex/react';
+import { useUser } from '@stackframe/stack';
 
 import moment from 'moment';
 import Image from 'next/image';
@@ -16,6 +17,19 @@ import ChatBox from '../../discussion-room/[roomid]/_components/ChatBox';
 
 function ViewSummary() {
   const { roomid } = useParams();
+  const user = useUser();
+
+  if (!user) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4">
+        <h2 className="text-2xl font-bold">You are not signed in</h2>
+        <p className="text-muted-foreground">Please sign in to access this summary.</p>
+        <Link href="/">
+            <Button>Go Home</Button>
+        </Link>
+      </div>
+    )
+  }
 
   const DiscussionRoomData = useQuery(api.DiscussionRoom.GetDiscussionRoom, { id: roomid });
   console.log(DiscussionRoomData);

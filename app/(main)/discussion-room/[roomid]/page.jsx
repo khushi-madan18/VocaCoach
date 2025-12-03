@@ -5,7 +5,7 @@ import nextDynamic from "next/dynamic";
 import { Button } from "@/components/ui/button";
 import { api } from "@/convex/_generated/api";
 import { CoachingExpert } from "@/services/Options";
-import { UserButton } from "@stackframe/stack";
+import { UserButton, useUser } from "@stackframe/stack";
 import { useMutation, useQuery } from "convex/react";
 import Image from "next/image";
 import Link from "next/link";
@@ -22,6 +22,21 @@ import { UserContext } from "@/app/_context/UserContext";
 function DiscussionRoom() {
   const { roomid } = useParams();
   const {userData,setUserData} = useContext(UserContext);
+  const user = useUser(); // Get user from stackframe
+
+  // Auth Check
+  if (!user) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4">
+        <h2 className="text-2xl font-bold">You are not signed in</h2>
+        <p className="text-muted-foreground">Please sign in to access this room.</p>
+        <Link href="/">
+            <Button>Go Home</Button>
+        </Link>
+      </div>
+    )
+  }
+
   const DiscussionRoomData = useQuery(api.DiscussionRoom.GetDiscussionRoom, { id: roomid });
 
   const [expert, setExpert] = useState(null);
