@@ -38,8 +38,8 @@ function ChatBox({conversation, enableSummary, coachingOption, topic,}) {
         {/* <div > */}
             {conversation.map((item, index)=>(
                 <div key={index} className={`flex ${item.role === 'user' && 'justify-end'}`}>
-                    {item.role==='assistant' ? <h2 className=" p-1 px-2 bg-primary text-white inline-block rounded-md mt-2">{item?.content}</h2> :
-                    <h2 className='p-1 px-2 bg-gray-200  inline-block rounded-md mt-2  justify-end'>{item?.content}</h2>}
+                    {item.role==='assistant' ? <h2 className=" p-1 px-2 bg-primary text-primary-foreground inline-block rounded-md mt-2">{item?.content}</h2> :
+                    <h2 className='p-1 px-2 bg-secondary text-secondary-foreground inline-block rounded-md mt-2  justify-end'>{item?.content}</h2>}
                 </div>
             ))}
         {/* </div> */}
