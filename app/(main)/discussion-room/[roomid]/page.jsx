@@ -199,6 +199,16 @@ function DiscussionRoom() {
  
   },[conversation])
 
+  const audioRef = useRef(null);
+
+  useEffect(() => {
+    if (audioUrl && audioRef.current) {
+      audioRef.current.play().catch(error => {
+        console.error("Audio playback failed:", error);
+      });
+    }
+  }, [audioUrl]);
+
   const disconnect = async (e) => {
     if (e) e.preventDefault();
     setLoading(true);
@@ -268,7 +278,7 @@ function DiscussionRoom() {
               className="h-[80px] w-[80px] rounded-full object-cover animate-pulse"
             />
             <h2 className="text-gray-500">{expert?.name}</h2>
-            <audio src={audioUrl} autoPlay type="audio/mp3"/>
+            <audio ref={audioRef} src={audioUrl} className="hidden"/>
             <div className="p-5 bg-gray-200 px-10 rounded-lg absolute bottom-10 right-10">
               <UserButton />
             </div>

@@ -107,6 +107,7 @@ export const AIModelForSummary = async (topic, coachingOption, conversation) => 
 
 
 export const ConvertTextToSpeech = async (text,expertName)=>{
+    console.log("ConvertTextToSpeech called with:", { text, expertName });
     const pollyClient = new PollyClient({
       region: 'us-east-1',
       credentials: {
@@ -128,8 +129,9 @@ export const ConvertTextToSpeech = async (text,expertName)=>{
       const audioBlob = new Blob([audioArrayBuffer], { type: 'audio/mp3' });
 
       const audioUrl = URL.createObjectURL(audioBlob);
+      console.log("Audio URL generated:", audioUrl);
       return audioUrl;
     }catch(err){
-      console.log(err)
+      console.error("Polly Error:", err);
     }
 }
