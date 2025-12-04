@@ -1,7 +1,7 @@
 import axios from "axios";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { coachingOptions } from "./Options";
-import { PollyClient, SynthesizeSpeechCommand } from "@aws-sdk/client-polly";
+
 
 export const getToken = async () => {
   try {
@@ -106,32 +106,23 @@ export const AIModelForSummary = async (topic, coachingOption, conversation) => 
 };
 
 
-export const ConvertTextToSpeech = async (text,expertName)=>{
+export const ConvertTextToSpeech = async (text, expertName) => {
     console.log("ConvertTextToSpeech called with:", { text, expertName });
-    const pollyClient = new PollyClient({
-      region: 'us-east-1',
-      credentials: {
-        accessKeyId:process.env.NEXT_PUBLIC_AWS_ACCESS_KEY,
-        secretAccessKey:process.env.NEXT_PUBLIC_AWS_SECRET_KEY
-      }
-    })
+    
+    try {
+        const response = await axios.post('/api/generate-audio', {
+            text: text,
+            voiceId: expertName
+        }, {
+            responseType: 'blob' // Important: Expect a blob response
+        });
 
-    const command = new SynthesizeSpeechCommand({
-        Text:text,
-        OutputFormat:'mp3',
-        VoiceId: expertName
-    })
+        const audioUrl = URL.createObjectURL(response.data);
+        console.log("Audio URL generated:", audioUrl);
+        return audioUrl;
 
-    try{
-      const {AudioStream} = await pollyClient.send(command);
-
-      const audioArrayBuffer = await AudioStream.transformToByteArray();
-      const audioBlob = new Blob([audioArrayBuffer], { type: 'audio/mp3' });
-
-      const audioUrl = URL.createObjectURL(audioBlob);
-      console.log("Audio URL generated:", audioUrl);
-      return audioUrl;
-    }catch(err){
-      console.error("Polly Error:", err);
+    } catch (err) {
+        console.error("TTS API Error:", err);
+        return null;
     }
 }
