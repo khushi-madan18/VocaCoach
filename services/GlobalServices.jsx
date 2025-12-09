@@ -110,7 +110,7 @@ export const ConvertTextToSpeech = async (text, expertName) => {
     console.log("ConvertTextToSpeech called with:", { text, expertName });
     
     try {
-        const response = await axios.post('/api/generate-audio', {
+        const response = await axios.post('/api/tts', {
             text: text,
             voiceId: expertName
         }, {

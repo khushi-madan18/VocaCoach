@@ -82,9 +82,9 @@ function History() {
     <Card className="h-full flex flex-col">
         <CardHeader>
             <div className="flex flex-col xl:flex-row justify-between items-start xl:items-center gap-4">
-                <CardTitle className='font-bold text-xl'>Your Previous Lectures</CardTitle>
+                <CardTitle className='font-bold text-xl whitespace-nowrap'>Your Previous Lectures</CardTitle>
                 <div className="flex gap-2 w-full xl:w-auto">
-                    <div className="relative flex-1 xl:w-64">
+                    <div className="relative flex-1 xl:w-48">
                         <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
                         <input
                             placeholder="Search topics..."
@@ -117,8 +117,8 @@ function History() {
             
             <div className='space-y-4'>
                 {paginatedList.map((item, index) => (
-                    <div key={index} className='border rounded-lg p-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 hover:bg-secondary/50 transition-colors group'>
-                        <div className='flex gap-4 items-center w-full sm:w-auto'>
+                    <div key={index} className='border rounded-lg p-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 hover:bg-secondary/50 transition-colors group min-h-[100px]'>
+                        <div className='flex gap-4 items-center w-full sm:flex-1 sm:min-w-0'>
                         <Image 
                             src={GetAbstractImages(item.coachingOption)} 
                             alt='abstract' 
@@ -132,9 +132,9 @@ function History() {
                             <h2 className='text-muted-foreground text-xs'>{moment(item._creationTime).fromNow()}</h2>
                         </div>
                         </div>
-                        <div className='flex gap-2 items-center w-full sm:w-auto justify-end'>
+                        <div className='flex gap-2 items-center w-full sm:w-auto sm:shrink-0 justify-end'>
                             <Link href={"/view-summary/" + item._id}>
-                            <Button variant='outline' size="sm" className='opacity-0 group-hover:opacity-100 transition-opacity'>View Notes</Button>
+                            <Button variant='outline' size="sm" className='opacity-0 group-hover:opacity-100 transition-opacity w-32'>View Notes</Button>
                             </Link>
                             <Button variant='ghost' size='icon' className='text-red-500 hover:text-red-600 hover:bg-red-50 opacity-0 group-hover:opacity-100 transition-opacity'
                             onClick={(e)=>deleteHistory(e, item._id)}
