@@ -1,7 +1,7 @@
 "use client";
 export const dynamic = "force-dynamic";   
 
-import nextDynamic from "next/dynamic";   
+
 import { Button } from "@/components/ui/button";
 import { api } from "@/convex/_generated/api";
 import { CoachingExpert } from "@/services/Options";
@@ -45,15 +45,12 @@ function DiscussionRoom() {
   const recorder = useRef(null);
   const realtimeTranscriber = useRef(null);
   const silenceTimeout = useRef(null);
+  const isBusy = useRef(false);
+  const messageQueue = useRef([]);
+  const currentAudio = useRef(null);
 
   const [transcribe, setTranscribe] = useState("");
-  const [conversation, setConversation] = useState([{
-    role:'assistant',
-    content: 'Hi'
-  },{
-    role: 'user',
-    content: 'Hello'
-  }]);
+  const [conversation, setConversation] = useState([]);
   const [loading, setLoading] = useState(false);
   const [audioUrl, setAudioUrl] = useState(null);
   const [enableSummary, setEnableSummary] = useState(false);
@@ -77,7 +74,7 @@ function DiscussionRoom() {
       const token = await getToken();
       console.log("Token fetched:", token ? `Yes (Length: ${token.length})` : "No");
 
-      const wsUrl = `wss://streaming.assemblyai.com/v3/ws?token=${token}&sample_rate=16000`;
+      const wsUrl = `wss://streaming.assemblyai.com/v3/ws?token=${token}&sample_rate=16000&end_utterance_silence_threshold=3000`;
       const ws = new WebSocket(wsUrl);
       realtimeTranscriber.current = ws;
 
@@ -121,6 +118,11 @@ function DiscussionRoom() {
           toast.error("Failed to access microphone");
           disconnect();
         }
+
+        // Trigger AI Introduction
+        if (conversation.length === 0) {
+            await handleIntroduction();
+        }
       };
 
       ws.onmessage = async (event) => {
@@ -132,15 +134,13 @@ function DiscussionRoom() {
           if (message.end_of_turn) {
             const finalText = message.transcript;
             if (finalText) {
-              setConversation((prev) => [
-                ...prev,
-                {
-                  role: "user",
-                  content: finalText,
-                },
-              ]);
-              await updateUserTokenMethod(finalText);
-              setTranscribe(""); 
+                if (isBusy.current) {
+                    console.log("System busy, queuing message:", finalText);
+                    messageQueue.current.push(finalText);
+                } else {
+                    isBusy.current = true;
+                    await handleUserMessage(finalText);
+                }
             }
           } 
           // Handle Partial Transcript
@@ -159,6 +159,8 @@ function DiscussionRoom() {
       ws.onerror = (event) => {
         console.error("WebSocket error:", event);
         toast.error("Connection error");
+        isBusy.current = false;
+        processNextInQueue();
         disconnect();
       };
 
@@ -175,6 +177,51 @@ function DiscussionRoom() {
     }
   };
 
+  const handleIntroduction = async () => {
+    isBusy.current = true;
+    try {
+        const aiResp = await AIModel(DiscussionRoomData.topic, DiscussionRoomData.coachingOption, [{
+            role: 'user',
+            content: `Please briefly introduce yourself to the user as their ${DiscussionRoomData.coachingOption} coach for the topic ${DiscussionRoomData.topic}. Keep it short and welcoming.`
+        }]);
+        
+        const url = await ConvertTextToSpeech(aiResp.content, DiscussionRoomData.expertName);
+        setAudioUrl(url);
+        setConversation([aiResp]);
+        await updateUserTokenMethod(aiResp.content);
+    } catch (error) {
+        console.error("Error in AI introduction:", error);
+        isBusy.current = false;
+    }
+  };
+
+  // Process a user message: update UI, get AI response, play audio
+  const handleUserMessage = async (text) => {
+      setConversation((prev) => [
+          ...prev,
+          { role: "user", content: text },
+      ]);
+      await updateUserTokenMethod(text);
+      setTranscribe("");
+      // The useEffect below will trigger due to conversation change,
+      // but we need to ensure it knows to fetch data. 
+      // Actually, relying on useEffect for conversation changes to trigger fetch 
+      // works, but we also need to be careful about the queue.
+      // The useEffect will handle the AI Call.
+  };
+
+  const processNextInQueue = async () => {
+      if (messageQueue.current.length > 0) {
+          console.log("Processing next from queue");
+          const nextText = messageQueue.current.shift();
+          isBusy.current = true;
+          await handleUserMessage(nextText);
+      } else {
+          console.log("Queue empty, system ready");
+          isBusy.current = false;
+      }
+  };
+
   useEffect(()=>{
     
     async function fetchData(){
@@ -182,14 +229,21 @@ function DiscussionRoom() {
       
       if(conversation[conversation.length -1].role==="user"){
         // Calling AI model to get response
-        const lastTwoResp = conversation.slice(-2)
-        const aiResp = await AIModel(DiscussionRoomData.topic, DiscussionRoomData.coachingOption,lastTwoResp); 
-        
-        const url = await ConvertTextToSpeech(aiResp.content,DiscussionRoomData.expertName);
-        console.log(url)
-        setAudioUrl(url);
-        setConversation((prev)=>[...prev,aiResp]);
-        await updateUserTokenMethod(aiResp.content); //Update Ai generated token
+        try {
+            const lastTwoResp = conversation.slice(-2)
+            const aiResp = await AIModel(DiscussionRoomData.topic, DiscussionRoomData.coachingOption,lastTwoResp); 
+            
+            const url = await ConvertTextToSpeech(aiResp.content,DiscussionRoomData.expertName);
+            console.log(url)
+            setAudioUrl(url);
+            setConversation((prev)=>[...prev,aiResp]);
+            await updateUserTokenMethod(aiResp.content); //Update Ai generated token
+        } catch (error) {
+            console.error("Error fetching AI response:", error);
+            // In case of error, release the lock so user can try again
+            isBusy.current = false; 
+            processNextInQueue();
+        }
       }
     }
 
@@ -203,9 +257,23 @@ function DiscussionRoom() {
 
   useEffect(() => {
     if (audioUrl) {
+      if (currentAudio.current) {
+          currentAudio.current.pause();
+          currentAudio.current = null;
+      }
       const audio = new Audio(audioUrl);
+      currentAudio.current = audio;
+      
+      audio.onended = () => {
+          console.log("Audio finished playing");
+          // Delay slightly to ensure natural flow or immediate? Immediate is fine.
+          processNextInQueue();
+      };
+
       audio.play().catch(error => {
         console.error("Audio playback failed (Autoplay policy?):", error);
+        // If play completely fails, we should releasing the lock
+        processNextInQueue();
       });
     }
   }, [audioUrl]);
@@ -234,6 +302,13 @@ function DiscussionRoom() {
       id: DiscussionRoomData._id,
       conversation: conversation,
     });
+    if (currentAudio.current) {
+        currentAudio.current.pause();
+        currentAudio.current = null;
+    }
+    isBusy.current = false;
+    messageQueue.current = [];
+
     setLoading(false);
     setEnableSummary(true);
   };
@@ -302,16 +377,14 @@ function DiscussionRoom() {
          <ChatBox conversation={conversation} 
          enableSummary={enableSummary} 
          coachingOption = {DiscussionRoomData?.coachingOption}
+         transcribe={transcribe}
          />
         </div>
-      </div>
-
-      <div>
-        <h2>{transcribe}</h2>
       </div>
     </div>
   );
 }
 
 export default DiscussionRoom;
+
 

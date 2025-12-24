@@ -1,5 +1,5 @@
 import axios from "axios";
-import { GoogleGenerativeAI } from "@google/generative-ai";
+
 import { coachingOptions } from "./Options";
 
 
@@ -13,55 +13,16 @@ export const getToken = async () => {
   }
 };
 
-const genAI = new GoogleGenerativeAI(process.env.NEXT_PUBLIC_GEMINI_API_KEY);
+
 
 export const AIModel = async (topic, coachingOption, lastTwoResp) => {
   try {
-    const option = coachingOptions.find((item) => item.name === coachingOption);
-    
-    // Fallback if option isn't found
-    if (!option) {
-      return { role: 'assistant', content: "Error: Coaching option not found." };
-    }
-
-    const PROMPT = (option.prompt).replace("{user_topic}", topic);
-    
-    try {
-      const model = genAI.getGenerativeModel({ 
-        model: "gemini-2.0-flash",
-        systemInstruction: PROMPT
-      });
-
-      let chatHistory = lastTwoResp.slice(0, -1).map(msg => ({
-        role: msg.role === 'assistant' ? 'model' : 'user',
-        parts: [{ text: msg.content }]
-      }));
-
-      // Gemini history must start with a user message
-      if (chatHistory.length > 0 && chatHistory[0].role === 'model') {
-        chatHistory = chatHistory.slice(1);
-      }
-
-      const chat = model.startChat({
-        history: chatHistory
-      });
-
-      const lastMsg = lastTwoResp[lastTwoResp.length - 1];
-      const result = await chat.sendMessage(lastMsg.content);
-      const response = await result.response;
-      const text = response.text();
-
-      console.log("AI Response:", text);
-      return { role: 'assistant', content: text };
-
-    } catch (error) {
-      console.error("AI Model Error:", error);
-      // Check for safety block or other generation errors
-      if (error.message?.includes("SAFETY") || error.message?.includes("blocked")) {
-         return { role: 'assistant', content: "Could you rephrase that? I want to make sure I understand correctly." };
-      }
-      throw error;
-    }
+    const response = await axios.post("/api/chat", {
+        topic,
+        coachingOption,
+        messages: lastTwoResp
+    });
+    return response.data;
 
   } catch (error) {
     console.error("AI Model Error:", error);
@@ -74,26 +35,12 @@ export const AIModel = async (topic, coachingOption, lastTwoResp) => {
 };
 export const AIModelForSummary = async (topic, coachingOption, conversation) => {
   try {
-    const option = coachingOptions.find((item) => item.name === coachingOption);
-    
-    // Fallback if option isn't found
-    if (!option) {
-      return { role: 'assistant', content: "Error: Coaching option not found." };
-    }
-
-    const PROMPT = (option.summaryprompt).replace("{user_topic}", topic);
-    
-    const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
-    
-    const conversationText = conversation.map(m => `${m.role}: ${m.content}`).join('\n');
-    const finalPrompt = `${PROMPT}\n\nConversation:\n${conversationText}\n\nPlease provide the summary now.`;
-
-    const result = await model.generateContent(finalPrompt);
-    const response = await result.response;
-    const text = response.text();
-
-    console.log("AI Response:", text);
-    return { role: 'assistant', content: text };
+    const response = await axios.post("/api/summary", {
+        topic,
+        coachingOption,
+        conversation
+    });
+    return response.data;
 
   } catch (error) {
     console.error("AI Model Error:", error);
