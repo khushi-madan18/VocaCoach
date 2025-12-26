@@ -12,7 +12,7 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import React, { useContext, useEffect, useRef, useState } from "react";
 import { AIModel, ConvertTextToSpeech, getToken } from "@/services/GlobalServices";
-import {  Loader2Icon, ArrowLeft } from "lucide-react";
+import {  Loader2Icon, ArrowLeft, Mic, MicOff } from "lucide-react";
 import ChatBox from "./_components/ChatBox";
 import { toast } from "sonner";
 import { UserContext } from "@/app/_context/UserContext";
@@ -41,6 +41,7 @@ function DiscussionRoom() {
 
   const [expert, setExpert] = useState(null);
   const [enableMic, setEnableMic] = useState(false);
+  const [isMicMuted, setIsMicMuted] = useState(false);
 
   const recorder = useRef(null);
   const realtimeTranscriber = useRef(null);
@@ -48,6 +49,7 @@ function DiscussionRoom() {
   const isBusy = useRef(false);
   const messageQueue = useRef([]);
   const currentAudio = useRef(null);
+  const isMicMutedRef = useRef(false);
 
   const [transcribe, setTranscribe] = useState("");
   const [conversation, setConversation] = useState([]);
@@ -99,7 +101,7 @@ function DiscussionRoom() {
               buffer[i] = Math.max(-1, Math.min(1, inputData[i])) * 0x7FFF;
             }
             
-            if (ws.readyState === WebSocket.OPEN) {
+            if (ws.readyState === WebSocket.OPEN && !isMicMutedRef.current) {
               // console.log("Sending audio chunk:", buffer.byteLength); // Uncomment for verbose logs
               ws.send(buffer.buffer); // Send the underlying ArrayBuffer
             }
@@ -296,6 +298,8 @@ function DiscussionRoom() {
     }
 
     setEnableMic(false);
+    setIsMicMuted(false);
+    isMicMutedRef.current = false;
     toast("Disconnected");
 
     await UpdateConversation({
@@ -360,14 +364,24 @@ function DiscussionRoom() {
             </div>
           </div>
 
-          <div className="mt-5 flex items-center justify-center">
+          <div className="mt-5 flex items-center justify-center gap-4">
             {!enableMic ? (
               <Button onClick={connectToServer} disabled={loading}>{loading && <Loader2Icon className="animate-spin"/>} Connect</Button>
             ) : (
+             <>
+              <Button variant="outline" size="icon" onClick={() => {
+                  const newState = !isMicMuted;
+                  setIsMicMuted(newState);
+                  isMicMutedRef.current = newState;
+              }}>
+                {isMicMuted ? <MicOff /> : <Mic />}
+              </Button>
+
               <Button variant="destructive" onClick={disconnect}>
                 {loading && <Loader2Icon className="animate-spin"/>}
                 Disconnect
               </Button>
+             </>
             )}
           </div>
         </div>

@@ -6,12 +6,11 @@ export async function POST(req) {
     try {
         const { topic, coachingOption, messages } = await req.json();
 
-        // Server-side environment variable
+        
         const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
         const option = coachingOptions.find((item) => item.name === coachingOption);
 
-        // Fallback if option isn't found
         if (!option) {
             return NextResponse.json({
                 role: 'assistant',
@@ -27,14 +26,13 @@ export async function POST(req) {
                 systemInstruction: PROMPT
             });
 
-            // Construct history
-            // messages is lastTwoResp from frontend
+            
             let chatHistory = messages.slice(0, -1).map(msg => ({
                 role: msg.role === 'assistant' ? 'model' : 'user',
                 parts: [{ text: msg.content }]
             }));
 
-            // Gemini history must start with a user message
+            
             if (chatHistory.length > 0 && chatHistory[0].role === 'model') {
                 chatHistory = chatHistory.slice(1);
             }

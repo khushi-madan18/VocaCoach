@@ -6,12 +6,12 @@ export async function POST(req) {
     try {
         const { topic, coachingOption, conversation } = await req.json();
 
-        // Server-side environment variable
+        
         const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
         const option = coachingOptions.find((item) => item.name === coachingOption);
 
-        // Fallback if option isn't found
+       
         if (!option) {
             return NextResponse.json({
                 role: 'assistant',
@@ -23,7 +23,7 @@ export async function POST(req) {
 
         const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
 
-        // conversation is passed from frontend
+       
         const conversationText = conversation.map(m => `${m.role}: ${m.content}`).join('\n');
         const finalPrompt = `${PROMPT}\n\nConversation:\n${conversationText}\n\nPlease provide the summary now.`;
 
