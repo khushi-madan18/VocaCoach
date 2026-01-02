@@ -346,10 +346,10 @@ function DiscussionRoom() {
         </Link>
       </div>
 
-      <div className="mt-5 grid grid-cols-1 lg:grid-cols-3 gap-10">
+      <div className="mt-5 grid grid-cols-1 lg:grid-cols-3 gap-5 md:gap-10">
         {/* Left section */}
         <div className="lg:col-span-2">
-          <div className="h-[60vh] bg-secondary border rounded-4xl flex flex-col items-center justify-center relative">
+          <div className="h-[50vh] md:h-[60vh] bg-secondary border rounded-4xl flex flex-col items-center justify-center relative">
             <Image
               src={expert?.avatar || "/default-avatar.png"}
               alt="Avatar"

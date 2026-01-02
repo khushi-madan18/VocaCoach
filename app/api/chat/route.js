@@ -1,4 +1,4 @@
-import { GoogleGenerativeAI } from "@google/generative-ai";
+import OpenAI from "openai";
 import { NextResponse } from "next/server";
 import { coachingOptions } from "../../../services/Options";
 
@@ -6,8 +6,11 @@ export async function POST(req) {
     try {
         const { topic, coachingOption, messages } = await req.json();
 
-        
-        const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+
+        const openai = new OpenAI({
+            baseURL: 'https://openrouter.ai/api/v1',
+            apiKey: process.env.DEEPSEEK_API_KEY
+        });
 
         const option = coachingOptions.find((item) => item.name === coachingOption);
 
@@ -21,42 +24,19 @@ export async function POST(req) {
         const PROMPT = (option.prompt).replace("{user_topic}", topic);
 
         try {
-            const model = genAI.getGenerativeModel({
-                model: "gemini-2.0-flash",
-                systemInstruction: PROMPT
+            // Include system prompt and history
+            const completion = await openai.chat.completions.create({
+                messages: [
+                    { role: "system", content: PROMPT },
+                    ...messages
+                ],
+                model: "deepseek/deepseek-chat",
             });
 
-            
-            let chatHistory = messages.slice(0, -1).map(msg => ({
-                role: msg.role === 'assistant' ? 'model' : 'user',
-                parts: [{ text: msg.content }]
-            }));
-
-            
-            if (chatHistory.length > 0 && chatHistory[0].role === 'model') {
-                chatHistory = chatHistory.slice(1);
-            }
-
-            const chat = model.startChat({
-                history: chatHistory
-            });
-
-            const lastMsg = messages[messages.length - 1];
-            const result = await chat.sendMessage(lastMsg.content);
-            const response = await result.response;
-            const text = response.text();
-
-            return NextResponse.json({ role: 'assistant', content: text });
+            return NextResponse.json({ role: 'assistant', content: completion.choices[0].message.content });
 
         } catch (error) {
             console.error("AI Model Error:", error);
-            // Check for safety block or other generation errors
-            if (error.message?.includes("SAFETY") || error.message?.includes("blocked")) {
-                return NextResponse.json({
-                    role: 'assistant',
-                    content: "Could you rephrase that? I want to make sure I understand correctly."
-                });
-            }
             throw error;
         }
 

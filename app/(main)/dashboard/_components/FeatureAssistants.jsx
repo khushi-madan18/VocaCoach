@@ -33,7 +33,7 @@ function FeatureAssistants() {
         </ProfileDialog>
       </div>
 
-      <div className='grid grid-cols-2 lg:grid-cols-5 xl:grid-cols-5 gap-10 mt-10'>
+      <div className='grid grid-cols-2 lg:grid-cols-5 xl:grid-cols-5 gap-4 md:gap-10 mt-10'>
         {coachingOptions.map((option, index) => (
           <BlurFade key={option.icon} delay={0.25 + index * 0.05} inView>
             <div className='p-3 bg-secondary rounded-3xl flex flex-col justify-center items-center'>

@@ -43,7 +43,7 @@ function ChatBox({conversation, enableSummary, coachingOption, topic, transcribe
 
   return (
     <div>
-        <div ref={scrollRef} className="h-[60vh] bg-secondary border rounded-xl flex flex-col  relative p-4 overflow-auto scroll-smooth">
+        <div ref={scrollRef} className="h-[50vh] md:h-[60vh] bg-secondary border rounded-xl flex flex-col  relative p-4 overflow-auto scroll-smooth">
         {/* <div > */}
             {conversation.map((item, index)=>(
                 <div key={index} className={`flex ${item.role === 'user' && 'justify-end'}`}>

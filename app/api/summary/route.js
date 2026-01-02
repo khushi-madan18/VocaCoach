@@ -1,4 +1,4 @@
-import { GoogleGenerativeAI } from "@google/generative-ai";
+import OpenAI from "openai";
 import { NextResponse } from "next/server";
 import { coachingOptions } from "../../../services/Options";
 
@@ -6,12 +6,15 @@ export async function POST(req) {
     try {
         const { topic, coachingOption, conversation } = await req.json();
 
-        
-        const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+
+        const openai = new OpenAI({
+            baseURL: 'https://openrouter.ai/api/v1',
+            apiKey: process.env.DEEPSEEK_API_KEY
+        });
 
         const option = coachingOptions.find((item) => item.name === coachingOption);
 
-       
+
         if (!option) {
             return NextResponse.json({
                 role: 'assistant',
@@ -21,17 +24,18 @@ export async function POST(req) {
 
         const PROMPT = (option.summaryprompt).replace("{user_topic}", topic);
 
-        const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
-
-       
         const conversationText = conversation.map(m => `${m.role}: ${m.content}`).join('\n');
         const finalPrompt = `${PROMPT}\n\nConversation:\n${conversationText}\n\nPlease provide the summary now.`;
 
-        const result = await model.generateContent(finalPrompt);
-        const response = await result.response;
-        const text = response.text();
+        const completion = await openai.chat.completions.create({
+            messages: [
+                { role: "system", content: "You are a helpful AI assistant." }, // Or specific summary system prompt
+                { role: "user", content: finalPrompt }
+            ],
+            model: "deepseek/deepseek-chat",
+        });
 
-        return NextResponse.json({ role: 'assistant', content: text });
+        return NextResponse.json({ role: 'assistant', content: completion.choices[0].message.content });
 
     } catch (error) {
         console.error("Summary Route Error:", error);
