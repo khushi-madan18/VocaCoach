@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
 import { AssemblyAI } from "assemblyai";
+import axios from "axios";
+import https from "https";
 
 export const dynamic = 'force-dynamic';
 
@@ -18,34 +20,35 @@ export async function GET() {
     const MAX_RETRIES = 3;
     let lastError;
 
+    const agent = new https.Agent({ family: 4 });
+
     for (let i = 0; i < MAX_RETRIES; i++) {
       try {
-        const response = await fetch(`https://streaming.assemblyai.com/v3/token?expires_in_seconds=600`, {
-          method: "GET",
+        const response = await axios.get(`https://streaming.assemblyai.com/v3/token?expires_in_seconds=600`, {
+          httpsAgent: agent,
           headers: {
             Authorization: apiKey,
             "Content-Type": "application/json",
           },
         });
 
-        const data = await response.json();
-
-        if (!response.ok) {
-          console.error(`Attempt ${i + 1} failed:`, data);
-          if (i === MAX_RETRIES - 1) {
-            return NextResponse.json({ error: data.error || "Failed to fetch token" }, { status: 500 });
-          }
-          continue;
-        }
-
+        const data = response.data;
         return NextResponse.json({ token: data.token });
 
       } catch (error) {
-        console.error(`Attempt ${i + 1} network error:`, error);
-        lastError = error;
-        if (i === MAX_RETRIES - 1) throw lastError;
-        // Wait briefly before retry
-        await new Promise(resolve => setTimeout(resolve, 500));
+        console.error(`Attempt ${i + 1} error:`, error.message);
+        if (error.response) {
+          console.error("Response data:", error.response.data);
+          if (i === MAX_RETRIES - 1) {
+            return NextResponse.json({ error: error.response.data.error || "Failed to fetch token" }, { status: 500 });
+          }
+        } else {
+          // Network error
+          lastError = error;
+          if (i === MAX_RETRIES - 1) throw lastError;
+          // Wait briefly before retry
+          await new Promise(resolve => setTimeout(resolve, 500));
+        }
       }
     }
 

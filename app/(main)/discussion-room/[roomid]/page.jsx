@@ -369,7 +369,7 @@ function DiscussionRoom() {
               <Button onClick={connectToServer} disabled={loading}>{loading && <Loader2Icon className="animate-spin"/>} Connect</Button>
             ) : (
              <>
-              <Button variant="outline" size="icon" onClick={() => {
+              <Button variant={isMicMuted ? "destructive" : "outline"} size="icon" onClick={() => {
                   const newState = !isMicMuted;
                   setIsMicMuted(newState);
                   isMicMutedRef.current = newState;
